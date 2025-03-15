@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Serial Log Viewer</title>
+</head>
+<body>
+  <h1>Serial Log Viewer</h1>
+  <pre id="log">Waiting for connection .....</pre>
+  <button type="button" id="btnStart" onclick="start();" disabled>Start Logging</button>
+  <button type="button" id="btnStop" onclick="stop()" disabled>Stop Logging</button>
+  <script>
+    var logElem = document.getElementById("log");
+    // Update the IP address as needed
+    const IP = "192.168.8.179"
+    var ws = new WebSocket("ws://"+IP+":81/");
+    
+    ws.onopen = function() {
+      logElem.innerHTML = "Connected to WebSocket server.\n";
+      document.getElementById("btnStop").disabled = false
+    };
+    
+    ws.onmessage = function(event) {
+      logElem.innerHTML += new Date().toLocaleString() + "\t" + event.data + "\n";
+      window.scrollTo(0, document.body.scrollHeight);
+    };
+    
+    ws.onerror = function(error) {
+      logElem.innerHTML += "WebSocket error: " + error + "\n";
+    };
+    
+    ws.onclose = function() {
+      logElem.innerHTML += "WebSocket connection closed.\n";
+    };
+    
+    function start(){
+      location.reload()
+    }
+    
+    function stop(){
+      document.getElementById("btnStop").disabled = true
+      document.getElementById("btnStart").disabled = false
+      ws.close(1000)
+    }
+  </script>
+</body>
+</html>
