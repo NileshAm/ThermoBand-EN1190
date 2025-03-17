@@ -9,6 +9,7 @@
   <pre id="log">Waiting for connection .....</pre>
   <button type="button" id="btnStart" onclick="start();" disabled>Start Logging</button>
   <button type="button" id="btnStop" onclick="stop()" disabled>Stop Logging</button>
+  <button type="button" id="btnClear" onclick="logElem.innerHTML = ''" disabled>Clear Logging</button>
   <script>
     var logElem = document.getElementById("log");
     // Update the IP address as needed
@@ -18,6 +19,7 @@
     ws.onopen = function() {
       logElem.innerHTML = "Connected to WebSocket server.\n";
       document.getElementById("btnStop").disabled = false
+      document.getElementById("btnClear").disabled = false
     };
     
     ws.onmessage = function(event) {
