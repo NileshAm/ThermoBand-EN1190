@@ -6,4 +6,9 @@ Docimentation folder contaoin all the document in this project.
 2. Badget calculations
 3. Survey Data.
 
+<hr/>
+
 <span style="font-size:1.5em;">**More details about code is in [README.md](Code/README.md) file in the Code folder**</span>
+<hr/>
+
+<span style="font-size:1.5em;">**More details about design is in [README.md](Design\README.md) file in the design folder**</span>
