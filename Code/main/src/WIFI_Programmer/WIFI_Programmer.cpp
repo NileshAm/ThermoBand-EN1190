@@ -5,15 +5,18 @@
 #include "WIFI_Programmer.h"
 
 // EEPROM configuration
-#define EEPROM_SIZE       96
+#define EEPROM_SIZE       128
 #define EEPROM_SSID_ADDR  0
 #define EEPROM_PASS_ADDR  32
+#define EEPROM_UID_ADDR   96
 #define MAX_SSID_LEN      32
 #define MAX_PASS_LEN      64
+#define MAX_UID_LEN       32
 
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
 #define HARD_PASS "YourPassword"
+#define HARD_UID "YourUID"
 
 // Create a web server on port 80 (for configuration portal)
 ESP8266WebServer server(80);
@@ -22,26 +25,98 @@ ESP8266WebServer server(80);
 // Web server handlers for AP configuration
 //---------------------------
 void handleRoot() {
-  String html = "<html><head><title>ESP8266 WiFi Setup</title></head><body>";
-  html += "<h1>Enter WiFi Credentials</h1>";
-  html += "<form action='/save' method='POST'>";
-  html += "SSID: <input type='text' name='ssid'><br>";
-  html += "Password: <input type='password' name='pass'><br><br>";
-  html += "<input type='submit' value='Save'>";
-  html += "</form></body></html>";
+  String html = R"(<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP8266 WiFi Setup</title>
+    <style>
+        .flex{
+            display: flex;
+        }
+        .jestify-content-center{
+            justify-content: center;
+        }
+        .jestify-content-around{
+            justify-content: space-around;
+        }
+        .align-items-center{
+            align-items: center;
+        }
+        .flex-col{
+            flex-direction: column;
+        }
+        .w-100{
+            width: 100%;
+        }
+        .w-50{
+            width: 50%;
+        }
+        .w-25{
+            width: 25%;
+        }
+        .w-75{
+            width: 75%;
+        }
+        .red{
+            background-color: red;
+        }
+        .text-align-center{
+            text-align: center;
+        }
+        .p-2{
+            padding: 0.2rem;
+        }
+        .p-4{
+            padding: 0.8rem;
+        }
+        .m-3{
+            margin: 0.3rem;
+        }
+        .mt-3{
+            margin-top: 0.3rem;
+        }
+        .form{
+            width: 50%;
+            background-color: rgb(235, 235, 235);
+            border-radius: 0.75rem;
+            border: solid 1px rgb(192, 192, 192);
+            box-shadow: 0.1rem 0.1rem 0.2rem rgb(214, 213, 213);
+        }
+    </style>
+  </head>
+  <body class=" flex jestify-content-center">
+      <form action="/save" method="POST" class=" form flex flex-col align-items-center justify-content-around p-4 mt-3">
+        <h1 class="w-100 text-align-center">Enter Credentials</h1>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="ssid" class="w-25">SSID: </label>
+            <input type="text" name="ssid"  class="w-75"/>
+        </div>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="pass" class="w-25">Password: </label>
+            <input type="password" name="pass" class="w-75"/>
+        </div>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="UID" class="w-25">UID: </label>
+            <input type="text" name="UID" class="w-75"/>
+        </div>
+      <input type="submit" value="Save"  class="p-2 m-3 w-50"/>
+    </form>
+  </body>
+</html>)";
   server.send(200, "text/html", html);
 }
 
 void handleSave() {
   String newSSID = server.arg("ssid");
   String newPass = server.arg("pass");
+  String newUID = server.arg("UID");
   
   Serial.println("New Credentials Received:");
   Serial.println("SSID: " + newSSID);
   Serial.println("Pass: " + newPass);
   
-  server.send(200, "text/html", "<html><body><h1>Credentials Saved</h1><p>Rebooting...</p></body></html>");
-  delay(1000);
   
   // Save the new credentials to EEPROM
   for (int i = 0; i < MAX_SSID_LEN; i++) {
@@ -50,8 +125,40 @@ void handleSave() {
   for (int i = 0; i < MAX_PASS_LEN; i++) {
     EEPROM.write(EEPROM_PASS_ADDR + i, newPass[i]);
   }
+  for (int i = 0; i < MAX_UID_LEN; i++) {
+    EEPROM.write(EEPROM_UID_ADDR + i, newUID[i]);
+  }
   EEPROM.commit();
-  
+
+  // String st = "";
+  // for (int i = 0; i < MAX_UID_LEN; i++) {
+  //   st += EEPROM.read(EEPROM_UID_ADDR + i);
+  // }
+  String html = R"(<html>
+  <head>
+    <title>Save</title>
+  </head>
+  <body>
+    <h1>Credentials Saved</h1>
+    <p>Rebooting...</p>
+    <p>Redirecting in <span id="Time"></span> ......</p>
+  </body>
+  <script>
+    time = 5;
+    document.getElementById("Time").innerHTML = time;
+    var interval = setInterval(function () {
+      time--;
+      document.getElementById("Time").innerHTML = time;
+      if (time <= 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000); // Update every second
+  </script>
+</html>
+)";
+  server.send(200, "text/html", html);
+  delay(1000);
   // Attempt connection with new credentials then reboot
   WiFi.begin(newSSID.c_str(), newPass.c_str());
   delay(5000);
@@ -76,14 +183,15 @@ void startAPMode() {
 //---------------------------
 // WiFi & OTA Setup function
 //---------------------------
-void wifiSetupOTA(const char* newSSID, const char* newPass) {
+void wifiSetupOTA(const char* newSSID, const char* newPass, uint8_t LED_PIN) {
   EEPROM.begin(EEPROM_SIZE);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
 
   char storedSSID[MAX_SSID_LEN];
   char storedPass[MAX_PASS_LEN];
+  char storedUID[MAX_UID_LEN];
   bool updateEEPROM = false;
 
   // If new credentials are provided, use them and mark to update EEPROM.
@@ -121,6 +229,9 @@ void wifiSetupOTA(const char* newSSID, const char* newPass) {
     }
     for (int i = 0; i < MAX_PASS_LEN; i++) {
       EEPROM.write(EEPROM_PASS_ADDR + i, storedPass[i]);
+    }
+    for (int i = 0; i < MAX_UID_LEN; i++) {
+      EEPROM.write(EEPROM_UID_ADDR + i, storedUID[i]);
     }
     EEPROM.commit();
   }
@@ -165,6 +276,7 @@ void wifiSetupOTA(const char* newSSID, const char* newPass) {
       else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
     });
+    ArduinoOTA.setPassword("230038E");
     ArduinoOTA.begin();
     Serial.println("OTA Ready");
     
@@ -189,7 +301,7 @@ void wifiSetupOTA(const char* newSSID, const char* newPass) {
         } else {
           ledState = LOW;  // Note that this switches the LED *on*
         }
-        digitalWrite(LED_BUILTIN, ledState);
+        digitalWrite(LED_PIN, ledState);
       }
     }
   }

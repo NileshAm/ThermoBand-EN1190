@@ -1,11 +1,13 @@
 #include "Blinker.h"
 
+Blinker bl(2);
+
 void setup() {
-  setupBLinker();
+  bl.setupBlinker();
 
 }
 
 void loop() {
-  blink(1000);
+  bl.blink(1200);
 
 }

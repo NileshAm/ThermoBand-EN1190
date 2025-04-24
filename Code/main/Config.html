@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP8266 WiFi Setup</title>
+    <style>
+        .flex{
+            display: flex;
+        }
+        .jestify-content-center{
+            justify-content: center;
+        }
+        .jestify-content-around{
+            justify-content: space-around;
+        }
+        .align-items-center{
+            align-items: center;
+        }
+        .flex-col{
+            flex-direction: column;
+        }
+        .w-100{
+            width: 100%;
+        }
+        .w-50{
+            width: 50%;
+        }
+        .w-25{
+            width: 25%;
+        }
+        .w-75{
+            width: 75%;
+        }
+        .red{
+            background-color: red;
+        }
+        .text-align-center{
+            text-align: center;
+        }
+        .p-2{
+            padding: 0.2rem;
+        }
+        .p-4{
+            padding: 0.8rem;
+        }
+        .m-3{
+            margin: 0.3rem;
+        }
+        .mt-3{
+            margin-top: 0.3rem;
+        }
+        .form{
+            width: 50%;
+            background-color: rgb(235, 235, 235);
+            border-radius: 0.75rem;
+            border: solid 1px rgb(192, 192, 192);
+            box-shadow: 0.1rem 0.1rem 0.2rem rgb(214, 213, 213);
+        }
+    </style>
+  </head>
+  <body class=" flex jestify-content-center">
+      <form action="/save" method="POST" class=" form flex flex-col align-items-center justify-content-around p-4 mt-3">
+        <h1 class="w-100 text-align-center">Enter Credentials</h1>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="ssid" class="w-25">SSID: </label>
+            <input type="text" name="ssid"  class="w-75"/>
+        </div>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="pass" class="w-25">Password: </label>
+            <input type="password" name="pass" class="w-75"/>
+        </div>
+        <div class="flex jestify-content-around w-100 p-2">
+            <label for="UID" class="w-25">UID: </label>
+            <input type="text" name="UID" class="w-75"/>
+        </div>
+      <input type="submit" value="Save"  class="p-2 m-3 w-50"/>
+    </form>
+  </body>
+</html>

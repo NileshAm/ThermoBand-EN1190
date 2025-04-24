@@ -1,22 +1,21 @@
 #include "Blinker.h"
 
-int ledState = LOW;
-
-unsigned long previousMillis = 0;
-
-void setupBLinker(){
-  pinMode(LED_BUILTIN, OUTPUT);
+Blinker::Blinker(uint8_t pin)
+  : _pin(pin),
+    _previousMillis(0),
+    _ledState(LOW)
+{
 }
 
-void blink(int interval){
+void Blinker::setupBlinker(){
+  pinMode(_pin, OUTPUT);
+}
+
+void Blinker::blink(int interval){
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    if (ledState == LOW) {
-      ledState = HIGH;  // Note that this switches the LED *off*
-    } else {
-      ledState = LOW;  // Note that this switches the LED *on*
-    }
-    digitalWrite(LED_BUILTIN, ledState);
+  if (currentMillis - _previousMillis >= interval) {
+    _previousMillis = currentMillis;
+    _ledState = !_ledState;
+    digitalWrite(_pin, _ledState);
   }
 }
