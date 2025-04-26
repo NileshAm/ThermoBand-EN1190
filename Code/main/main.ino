@@ -1,31 +1,31 @@
 // ######################### Do not change this Code ###########################################
-#include "src/WIFI_Programmer/WIFI_Programmer.h"
-#include "src/WIFI_Programmer/SerialWebLogger.h"
+#include "src/WIFI_Programmer.h"
+#include "src/SerialWebLogger.h"
 // #############################################################################################
-#include "src/DigitalTempSensor/DigitalTempSensor.h"
-#include "src/Blinker/Blinker.h"
-#include "src/Button/Button.h"
-#include "src/HTTPRequest/HTTPRequest.h"
+#include "src/DigitalTempSensor.h"
+#include "src/Blinker.h"
+#include "src/Button.h"
+#include "src/HTTPRequest.h"
 
 #include <EEPROM.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClientSecureBearSSL.h>
-#include <WiFiClient.h>
 
 // EEPROM configuration
-#define EEPROM_SIZE 128
+#define EEPROM_SIZE 160
 #define EEPROM_SSID_ADDR 0
 #define EEPROM_PASS_ADDR 32
 #define EEPROM_UID_ADDR 96
+#define EEPROM_MAC_ADDR 128
 #define MAX_SSID_LEN 32
 #define MAX_PASS_LEN 64
 #define MAX_UID_LEN 32
+#define MAX_MAC_LEN 32
 
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
 #define HARD_PASS "YourPassword"
 
 #define ServerURL "http://192.168.8.151:3000"
+String storedMAC;
 
 void reset() {
   // Save the new credentials to EEPROM
@@ -51,10 +51,6 @@ Blinker blinker(14);
 int greenPin = 12;
 int bluePin = 13;
 
-String SSID = "";
-String Pass = "";
-String UID = "";
-
 void setup() {
   blinker.setupBlinker();
   // ######################### Do not change this Code ###########################################
@@ -69,6 +65,11 @@ void setup() {
 
   setupHTTP("http://192.168.8.151:3000");
 
+  
+  for (int i = 0; i < MAX_MAC_LEN; i++)
+  {
+    storedMAC[i] = char(EEPROM.read(EEPROM_MAC_ADDR + i));
+  }
 
   btn1.begin();
   btn2.begin();
@@ -82,17 +83,9 @@ void setup() {
   digitalWrite(greenPin, HIGH);
   digitalWrite(bluePin, HIGH);
 
-  // pinMode(2, OUTPUT);
-  // digitalWrite(2, HIGH);
-
-  for (int i = 0; i < MAX_SSID_LEN; i++) {
-    SSID += char(EEPROM.read(EEPROM_SSID_ADDR + i));
-  }
-  for (int i = 0; i < MAX_PASS_LEN; i++) {
-    Pass += char(EEPROM.read(EEPROM_PASS_ADDR + i));
-  }
-  for (int i = 0; i < MAX_UID_LEN; i++) {
-    UID += char(EEPROM.read(EEPROM_UID_ADDR + i));
+  String res = HTTPGET("/test");
+  if(res != R"({"message":"connection successful"})"){
+    digitalWrite(bluePin, LOW);
   }
 }
 bool RED = 1;
@@ -115,19 +108,21 @@ void loop(){
   if (btn1.isLongPressed()) {
     reset();
   }
-  if (btn2.wasShortPress()) {
-    GREEN = !GREEN;
-    digitalWrite(greenPin, GREEN);
-    digitalWrite(bluePin, BLUE);
-    logMessage("btn2");
-  }
 
   if (millis() - t > interval * 1000) {
+    int tries = 5;
+    String res = "";
+    while(res == R"({"message":"connection successful"})" || tries <0){
+      tries--;
+      res = HTTPPOST("/api/set/temp/"+storedMAC, "{'Temp':'"+String(readTempSensor())+"'}");
+    }
+    if(res == R"({"message":"connection successful"})"){
+      digitalWrite(greenPin, LOW);
+    }else{
+      digitalWrite(greenPin, HIGH);
+    }
     logMessage(readTempSensor());
-    
 
-    String res = HTTPGET("/test");
-    logMessage(res);
 
 
     t = millis();
