@@ -134,7 +134,8 @@ void handleSave() {
   // for (int i = 0; i < MAX_UID_LEN; i++) {
   //   st += EEPROM.read(EEPROM_UID_ADDR + i);
   // }
-  String html = R"(<html>
+  String html = R"(
+<html>
   <head>
     <title>Save</title>
   </head>
@@ -157,10 +158,51 @@ void handleSave() {
   </script>
 </html>
 )";
+  String WIFIFailed = R"(
+<html>
+  <head>
+    <title>WIFI Connection Failed</title>
+  </head>
+  <body>
+    <h1>Unable to save credentials</h1>
+    <h3>Maximum connection retries reached</h3>
+    <p>Credentials might be incorrect</p>
+    <p>Redirecting to Setup in <span id="Time" .....></span></p>
+    <br>
+    <button type="button" onclick="window.location.href = '/';">Redirect now</button>
+  </body>
+  <script>
+    time = 10;
+    document.getElementById("Time").innerHTML = time;
+    var interval = setInterval(function () {
+      time--;
+      document.getElementById("Time").innerHTML = time;
+      if (time <= 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000); // Update every second
+  </script>
+</html>)"
+
+  WiFi.begin(newSSID.c_str(), newPass.c_str());
+
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 20) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
+
+  if(WiFi.status() != WL_CONNECTED){
+    server.send(200, "text/html", WIFIFailed);
+    ESP.restart();
+  }
+
+  
   server.send(200, "text/html", html);
   delay(1000);
   // Attempt connection with new credentials then reboot
-  WiFi.begin(newSSID.c_str(), newPass.c_str());
   delay(5000);
   ESP.restart();
 }

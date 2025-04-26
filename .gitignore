@@ -1,3 +1,6 @@
 .env
 
 test_*
+
+node_modules
+server

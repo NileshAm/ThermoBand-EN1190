@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>WIFI Connection Failed</title>
+  </head>
+  <body>
+    <h1>Unable to save credentials</h1>
+    <h3>Maximum connection retries reached</h3>
+    <p>Credentials might be incorrect</p>
+    <p>Redirecting to Setup in <span id="Time" .....></span></p>
+    <br>
+    <button type="button" onclick="window.location.href = '/';">Redirect now</button>
+  </body>
+  <script>
+    time = 10;
+    document.getElementById("Time").innerHTML = time;
+    var interval = setInterval(function () {
+      time--;
+      document.getElementById("Time").innerHTML = time;
+      if (time <= 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000); // Update every second
+  </script>
+</html>

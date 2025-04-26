@@ -5,6 +5,7 @@
 #include "src/DigitalTempSensor/DigitalTempSensor.h"
 #include "src/Blinker/Blinker.h"
 #include "src/Button/Button.h"
+#include "src/HTTPRequest/HTTPRequest.h"
 
 #include <EEPROM.h>
 #include <ESP8266HTTPClient.h>
@@ -24,7 +25,7 @@
 #define HARD_SSID "YourSSID"
 #define HARD_PASS "YourPassword"
 
-#define ServerURL "https://www.omdbapi.com/?apikey=a5e60159&s=spider"
+#define ServerURL "http://192.168.8.151:3000"
 
 void reset() {
   // Save the new credentials to EEPROM
@@ -42,14 +43,6 @@ void reset() {
 // ## Dont use D4/GPIO2, as its reserved for LED_BUILTIN
 Button btn1(5, 5000);
 Button btn2(0, 2000);
-<<<<<<< Updated upstream
-// Button btn3(10, 2000);
-=======
-<<<<<<< Updated upstream
-// Button btn3(16, 2000);
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 Blinker blinker(14);
 
@@ -73,6 +66,8 @@ void setup() {
   setupSensor(4);
   tempSensorBegin();
   setResolution(12);
+
+  setupHTTP("http://192.168.8.151:3000");
 
 
   btn1.begin();
@@ -104,6 +99,9 @@ bool RED = 1;
 bool GREEN = 1;
 bool BLUE = 1;
 
+long t = millis();
+int interval = 5;
+
 void loop(){
   // ######################### Do not change this Code ###########################################
   otaHandle();
@@ -113,77 +111,26 @@ void loop(){
 
   btn1.update();
   btn2.update();
-  // btn3.update();
 
   if (btn1.isLongPressed()) {
-    // BLUE = !BLUE;
-    // // digitalWrite(redPin, RED);
-    // digitalWrite(greenPin, GREEN);
-    // digitalWrite(bluePin, BLUE);
-    // logMessage("btn1");
     reset();
   }
   if (btn2.wasShortPress()) {
     GREEN = !GREEN;
-    // digitalWrite(redPin, RED);
     digitalWrite(greenPin, GREEN);
     digitalWrite(bluePin, BLUE);
     logMessage("btn2");
   }
-  // if (btn3.wasShortPress()) {
-  //   BLUE = !BLUE;
-  //   digitalWrite(redPin, RED);
-  //   digitalWrite(greenPin, GREEN);
-  //   digitalWrite(bluePin, BLUE);
-  //   logMessage("btn3");
-  // }
 
   if (millis() - t > interval * 1000) {
-    // digitalWrite(redPin, LOW);
-    lastRead = millis();
     logMessage(readTempSensor());
-    // logMessage(SSID);
-    // logMessage(Pass);
-    // logMessage(UID);
+    
 
-    // std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    // // client->setFingerprint(fingerprint_sni_cloudflaressl_com);
-    // client->setInsecure();
-
-    // HTTPClient https;
-    // logMessage("http");
-    // if (https.begin(*client, ServerURL)) {  // HTTP
-    //   // start connection and send HTTP header
-    //   int httpCode = https.GET();
-    //   // httpCode will be negative on error
-    //   if (httpCode > 0) {
-    //     // HTTP header has been send and Server response header has been handled
-    //     logMessage("[HTTP] GET... code: ");
-    //     logMessage(httpCode);
-    //     logMessage("\n");
-
-    //       // file found at server
-    //     String payload = https.getString();
-    //     logMessage(payload);
-    //     if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-    //       String payload = https.getString();
-    //       logMessage(payload);
-    //     }
-    //   } else {
-    //     Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
-    //   }
-
-    //   https.end();
-    // } else {
-    //   logMessage("[HTTP] Unable to connect");
-    // }
+    String res = HTTPGET("/test");
+    logMessage(res);
 
 
     t = millis();
-  }
-
-  if (millis() - lastRead > 500) {
-    // digitalWrite(redPin, HIGH);
   }
 
   blinker.blink(1000);
