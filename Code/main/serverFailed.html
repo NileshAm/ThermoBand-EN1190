@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>Server Connection Failed</title>
+  </head>
+  <body>
+    <h1>Unable to save credentials</h1>
+    <h3>Unable to connect to server</h3>
+    <p>Internet connection might be faulty, or invalid UID</p>
+    <p>Redirecting to Setup in <span id="Time" .....></span></p>
+    <br>
+    <button type="button" onclick="window.location.href = '/';">Redirect now</button>
+  </body>
+  <script>
+    time = 10;
+    document.getElementById("Time").innerHTML = time;
+    var interval = setInterval(function () {
+      time--;
+      document.getElementById("Time").innerHTML = time;
+      if (time <= 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000); // Update every second
+  </script>
+</html>
