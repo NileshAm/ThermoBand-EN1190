@@ -1,51 +1,92 @@
 #include "HTTPRequest.h"
 #include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecureBearSSL.h>
 
-// Global state
-static String serverURL;
-static std::unique_ptr<BearSSL::WiFiClientSecure> secureClient;
-static HTTPClient http;
+// -------------------------
+// globals
+// -------------------------
+static String              gBaseURL;
+static bool                gUsesTLS = false;
+static bool                gTLSInsecure = true;
 
-void setupHTTP(const String& baseURL) {
-  serverURL = baseURL;
-  secureClient = std::make_unique<BearSSL::WiFiClientSecure>();
-  secureClient->setInsecure();  // Skip certificate check
+static WiFiClient          gPlain;
+static std::unique_ptr<BearSSL::WiFiClientSecure> gSecure;
+static HTTPClient          gHTTP;
+
+// -------------------------
+// init
+// -------------------------
+void setupHTTP(const String& baseURL, bool ignoreTLS)
+{
+  gBaseURL = baseURL;
+  gUsesTLS = baseURL.startsWith("https://");
+  gTLSInsecure = ignoreTLS;
+
+  if (gUsesTLS) {
+    gSecure.reset(new BearSSL::WiFiClientSecure);
+    if (gTLSInsecure) gSecure->setInsecure();           // skip cert check
+  }
 }
 
-String HTTPGET(const String& endpoint) {
-  if (!secureClient) return "Error: HTTP client not initialized";
-  String fullURL = serverURL + endpoint;
-  if (!http.begin(*secureClient, fullURL)) {
-    return "Error: begin() failed";
-  }
+// -------------------------
+// helpers
+// -------------------------
+static String beginRequest(const String& url)
+{
+  bool ok;
+  if (gUsesTLS)
+    ok = gHTTP.begin(*gSecure, url);
+  else
+    ok = gHTTP.begin(gPlain, url);
 
-  int code = http.GET();
+  if (!ok) return F("ERR: begin() failed");
+  return String();     // empty == success
+}
+
+static String handleResult(int code)
+{
   if (code <= 0) {
-    String err = "GET failed, error: " + String(code);
-    http.end();
+    String err = F("ERR: connection ") + String(code);
+    gHTTP.end();
     return err;
   }
-
-  String payload = http.getString();
-  http.end();
+  if (code != HTTP_CODE_OK && code != HTTP_CODE_CREATED &&
+      code != HTTP_CODE_MOVED_PERMANENTLY) {
+    String err = F("ERR: HTTP ") + String(code);
+    gHTTP.end();
+    return err;
+  }
+  String payload = gHTTP.getString();
+  gHTTP.end();
   return payload;
 }
 
-String HTTPPOST(const String& endpoint, const String& payload) {
-  if (!secureClient) return "Error: HTTP client not initialized";
-  String fullURL = serverURL + endpoint;
-  if (!http.begin(*secureClient, fullURL)) {
-    return "Error: begin() failed";
-  }
-  http.addHeader("Content-Type", "application/json");
-  int code = http.POST(payload);
-  if (code <= 0) {
-    String err = "POST failed, error: " + String(code);
-    http.end();
-    return err;
-  }
-  String response = http.getString();
-  http.end();
-  return response;
+// -------------------------
+// GET
+// -------------------------
+String HTTPGET(const String& endpoint)
+{
+  String url = gBaseURL + endpoint;
+  String err = beginRequest(url);
+  if (err.length()) return err;
+
+  int code = gHTTP.GET();
+  return handleResult(code);
+}
+
+// -------------------------
+// POST
+// -------------------------
+String HTTPPOST(const String& endpoint,
+                const String& payload,
+                const String& contentType)
+{
+  String url = gBaseURL + endpoint;
+  String err = beginRequest(url);
+  if (err.length()) return err;
+
+  gHTTP.addHeader(F("Content-Type"), contentType);
+  int code = gHTTP.POST(payload);
+  return handleResult(code);
 }

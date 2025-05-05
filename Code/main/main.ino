@@ -18,14 +18,13 @@
 #define MAX_SSID_LEN 32
 #define MAX_PASS_LEN 64
 #define MAX_UID_LEN 32
-#define MAX_MAC_LEN 32
-
+#define MAX_MAC_LEN 18
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
 #define HARD_PASS "YourPassword"
 
 #define ServerURL "http://192.168.8.151:3000"
-String storedMAC;
+String storedMAC = "";
 
 void reset() {
   // Save the new credentials to EEPROM
@@ -68,7 +67,10 @@ void setup() {
   
   for (int i = 0; i < MAX_MAC_LEN; i++)
   {
-    storedMAC[i] = char(EEPROM.read(EEPROM_MAC_ADDR + i));
+    char c = EEPROM.read(EEPROM_MAC_ADDR + i);
+    if (c == '\0' || c == (char)0xFF)       // reached the terminator
+      break;
+    storedMAC += c; 
   }
 
   btn1.begin();
@@ -93,7 +95,7 @@ bool GREEN = 1;
 bool BLUE = 1;
 
 long t = millis();
-int interval = 5;
+int interval = 2;
 
 void loop(){
   // ######################### Do not change this Code ###########################################
@@ -110,13 +112,13 @@ void loop(){
   }
 
   if (millis() - t > interval * 1000) {
-    int tries = 5;
+    int tries = 3;
     String res = "";
-    while(res == R"({"message":"connection successful"})" || tries <0){
+    while(res != R"({"status":"ok"})" && tries >0){
       tries--;
-      res = HTTPPOST("/api/set/temp/"+storedMAC, "{'Temp':'"+String(readTempSensor())+"'}");
+      res = HTTPPOST(String("/api/set/temp/")+String(storedMAC), String("{\"Temp\":"+String(readTempSensor(), 2))+String("}"));
     }
-    if(res == R"({"message":"connection successful"})"){
+    if(res!=R"({"status":"ok"})"){
       digitalWrite(greenPin, LOW);
     }else{
       digitalWrite(greenPin, HIGH);

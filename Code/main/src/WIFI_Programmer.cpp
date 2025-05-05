@@ -14,7 +14,7 @@
 #define MAX_SSID_LEN 32
 #define MAX_PASS_LEN 64
 #define MAX_UID_LEN 32
-#define MAX_MAC_LEN 32
+#define MAX_MAC_LEN 18
 
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
@@ -121,6 +121,7 @@ void handleSave()
   Serial.println("New Credentials Received:");
   Serial.println("SSID: " + newSSID);
   Serial.println("Pass: " + newPass);
+  Serial.println("UID: " + newUID);
 
   String html = R"(
       <html>
@@ -215,8 +216,13 @@ void handleSave()
   }
 
   setupHTTP("http://192.168.8.151:3000");
-  String res = HTTPPOST("/api/set/hid", "{'UID':'"+String(newUID)+"','MacAddress':'"+WiFi.macAddress()+"'}");
-  if (res != R"({"message":"connection successful"})")
+  int tries = 3;
+  String res = "";
+  while(res != R"({"status":"ok"})" && tries >0){
+    tries--;
+    res = HTTPPOST(String("/api/set/hid"), String("{\"UID\":\"") + String(newUID)+String("\",\"MacAddress\":\"") + String(WiFi.macAddress()) +String("\"}"));
+  }
+  if(res!=R"({"status":"ok"})")
   {
     server.send(200, "text/html", ServerFailed);
     ESP.restart();
@@ -330,26 +336,14 @@ void wifiSetupOTA(const char *newSSID, const char *newPass, uint8_t LED_PIN)
   // Attempt connection in STA mode.
   WiFi.mode(WIFI_STA);
   // Read MAC address from EEPROM
-  char storedMAC[MAX_MAC_LEN];
-  for (int i = 0; i < MAX_MAC_LEN; i++)
-  {
-    storedMAC[i] = char(EEPROM.read(EEPROM_MAC_ADDR + i));
-  }
-  storedMAC[MAX_MAC_LEN - 1] = '\0';
+  String mac = WiFi.macAddress();          // "AA:BB:CC:DD:EE:FF"
+  char buf[MAX_MAC_LEN];
+  mac.toCharArray(buf, MAX_MAC_LEN);
 
-  // If EEPROM has no valid MAC address, use the device's MAC address
-  if (strlen(storedMAC) == 0)
-  {
-    String macAddress = WiFi.macAddress();
-    macAddress.toCharArray(storedMAC, MAX_MAC_LEN);
-
-    // Save the MAC address to EEPROM
-    for (int i = 0; i < MAX_MAC_LEN; i++)
-    {
-      EEPROM.write(EEPROM_MAC_ADDR + i, storedMAC[i]);
-    }
-    EEPROM.commit();
-  }
+  for (uint8_t i = 0; i < MAX_MAC_LEN; ++i)
+    EEPROM.write(EEPROM_MAC_ADDR + i, buf[i]);
+  EEPROM.commit();
+  
   WiFi.begin(storedSSID, storedPass);
 
   Serial.print("Connecting to WiFi");
