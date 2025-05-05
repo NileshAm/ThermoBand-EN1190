@@ -8,6 +8,7 @@
 #include "src/HTTPRequest.h"
 
 #include <EEPROM.h>
+#include <ArduinoJson.h>
 
 // EEPROM configuration
 #define EEPROM_SIZE 160
@@ -15,15 +16,19 @@
 #define EEPROM_PASS_ADDR 32
 #define EEPROM_UID_ADDR 96
 #define EEPROM_MAC_ADDR 128
+#define EEPROM_INTERVAL_ADDR 146
 #define MAX_SSID_LEN 32
 #define MAX_PASS_LEN 64
 #define MAX_UID_LEN 32
 #define MAX_MAC_LEN 18
+#define MAX_INTERVAL_LEN 12
+
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
-#define HARD_PASS "YourPassword"
+#define HARD_PASS "YourPassword" 
 
 #define ServerURL "http://192.168.8.151:3000"
+int INTERVAL = 2;
 String storedMAC = "";
 
 void reset() {
@@ -86,8 +91,20 @@ void setup() {
   digitalWrite(bluePin, HIGH);
 
   String res = HTTPGET("/test");
-  if(res != R"({"message":"connection successful"})"){
+  StaticJsonDocument<128> doc;
+  deserializeJson(doc, res);
+  if(doc["message"] != "connection successful"){
     digitalWrite(bluePin, LOW);
+  }else if(doc.containsKey("interval")){
+    int interval = 0;
+    EEPROM.get(EEPROM_INTERVAL_ADDR, interval);
+    if (interval != doc["interval"]){
+      EEPROM.put(EEPROM_INTERVAL_ADDR, doc["interval"].as<int>());
+      EEPROM.commit();
+      INTERVAL = doc["interval"].as<int>();
+    }else{
+      INTERVAL = interval;
+    }
   }
 }
 bool RED = 1;
@@ -95,7 +112,6 @@ bool GREEN = 1;
 bool BLUE = 1;
 
 long t = millis();
-int interval = 2;
 
 void loop(){
   // ######################### Do not change this Code ###########################################
@@ -111,16 +127,38 @@ void loop(){
     reset();
   }
 
-  if (millis() - t > interval * 1000) {
+  if (millis() - t > INTERVAL * 1000) {
     int tries = 3;
     String res = "";
-    while(res != R"({"status":"ok"})" && tries >0){
+    StaticJsonDocument<128> doc;
+    while(doc["status"] != "ok"  && tries >0){
       tries--;
       res = HTTPPOST(String("/api/set/temp/")+String(storedMAC), String("{\"Temp\":"+String(readTempSensor(), 2))+String("}"));
+      deserializeJson(doc, res);
     }
-    if(res!=R"({"status":"ok"})"){
+
+    if(doc["status"] != "ok" ){
       digitalWrite(greenPin, LOW);
     }else{
+      if(doc.containsKey("interval")){
+        EEPROM.put(EEPROM_INTERVAL_ADDR, doc["interval"].as<int>());
+        EEPROM.commit();
+        INTERVAL = doc["interval"].as<int>();
+      }
+      if(doc.containsKey("SSID")){
+        String newSSID = doc["SSID"];
+        String newPassword = doc["Password"];
+
+        for (int i = 0; i < MAX_SSID_LEN; i++) {
+          EEPROM.write(EEPROM_SSID_ADDR + i, newSSID[i]);
+        }
+        for (int i = 0; i < MAX_PASS_LEN; i++) {
+          EEPROM.write(EEPROM_PASS_ADDR + i, newPassword[i]);
+        }
+        EEPROM.commit();
+
+        ESP.restart();
+      }
       digitalWrite(greenPin, HIGH);
     }
     logMessage(readTempSensor());

@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include "WIFI_Programmer.h"
@@ -11,18 +12,33 @@
 #define EEPROM_PASS_ADDR 32
 #define EEPROM_UID_ADDR 96
 #define EEPROM_MAC_ADDR 128
+#define EEPROM_INTERVAL_ADDR 146
 #define MAX_SSID_LEN 32
 #define MAX_PASS_LEN 64
 #define MAX_UID_LEN 32
 #define MAX_MAC_LEN 18
+#define MAX_INTERVAL_LEN 12
 
 // Hardcoded default credentials (if EEPROM is empty)
 #define HARD_SSID "YourSSID"
 #define HARD_PASS "YourPassword"
 #define HARD_UID "YourUID"
+#define HARD_INTERVAL 86400 // 24 hours in seconds
 
 // Create a web server on port 80 (for configuration portal)
 ESP8266WebServer server(80);
+
+String makePayload(const String &uid, const String &mac, const uint32_t interval)
+{
+  StaticJsonDocument<128> doc;
+  doc["UID"] = uid;
+  doc["MacAddress"] = mac;
+  doc["Interval"] = interval;
+
+  String out;
+  serializeJson(doc, out); // {"UID":"...","MacAddress":"...","Interval":86400}
+  return out;
+}
 
 //---------------------------
 // Web server handlers for AP configuration
@@ -107,8 +123,8 @@ void handleRoot()
         </div>
       <input type="submit" value="Save"  class="p-2 m-3 w-50"/>
     </form>
-  </body>
-</html>)";
+    </body>
+    </html>)";
   server.send(200, "text/html", html);
 }
 
@@ -218,11 +234,14 @@ void handleSave()
   setupHTTP("http://192.168.8.151:3000");
   int tries = 3;
   String res = "";
-  while(res != R"({"status":"ok"})" && tries >0){
+  StaticJsonDocument<128> doc;
+  while (doc["status"] != "ok" && tries > 0)
+  {
     tries--;
-    res = HTTPPOST(String("/api/set/hid"), String("{\"UID\":\"") + String(newUID)+String("\",\"MacAddress\":\"") + String(WiFi.macAddress()) +String("\"}"));
+    res = HTTPPOST(String("/api/set/hid"), makePayload(String(newUID), WiFi.macAddress(), HARD_INTERVAL));
+    deserializeJson(doc, res);
   }
-  if(res!=R"({"status":"ok"})")
+  if (doc["status"] != "ok")
   {
     server.send(200, "text/html", ServerFailed);
     ESP.restart();
@@ -241,6 +260,7 @@ void handleSave()
   {
     EEPROM.write(EEPROM_UID_ADDR + i, newUID[i]);
   }
+  EEPROM.put(EEPROM_INTERVAL_ADDR, HARD_INTERVAL);
   EEPROM.commit();
 
   server.send(200, "text/html", html);
@@ -336,14 +356,14 @@ void wifiSetupOTA(const char *newSSID, const char *newPass, uint8_t LED_PIN)
   // Attempt connection in STA mode.
   WiFi.mode(WIFI_STA);
   // Read MAC address from EEPROM
-  String mac = WiFi.macAddress();          // "AA:BB:CC:DD:EE:FF"
+  String mac = WiFi.macAddress(); // "AA:BB:CC:DD:EE:FF"
   char buf[MAX_MAC_LEN];
   mac.toCharArray(buf, MAX_MAC_LEN);
 
   for (uint8_t i = 0; i < MAX_MAC_LEN; ++i)
     EEPROM.write(EEPROM_MAC_ADDR + i, buf[i]);
   EEPROM.commit();
-  
+
   WiFi.begin(storedSSID, storedPass);
 
   Serial.print("Connecting to WiFi");
