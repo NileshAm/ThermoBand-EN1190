@@ -9,7 +9,7 @@ WEBSOCKET_URI = "ws://192.168.8.178:81/"
 async def listen_and_save():
     # Open the CSV file in append mode.
     # If you want to create a new file every run, use "w" mode.
-    with open("C:/Users/Subodha/Desktop/Desk/edp/ThermoBand-EN1190/Code/test_data/rawData/test_output_data_4.csv", "w", newline="") as csvfile:
+    with open("C:/Users/Subodha/Desktop/Desk/edp/ThermoBand-EN1190/Code/test_data/rawData/test_output_data_6.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         # Optionally, write a header if file is empty.
         # writer.writerow(["Timestamp", "Data"])
