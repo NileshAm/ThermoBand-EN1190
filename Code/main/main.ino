@@ -12,34 +12,35 @@
 #include <pgmspace.h>
 
 /* ------------------- EEPROM layout & constants ------------------- */
-#define EEPROM_SIZE          160
-#define EEPROM_SSID_ADDR       0
-#define EEPROM_PASS_ADDR      32
-#define EEPROM_UID_ADDR       96
-#define EEPROM_MAC_ADDR      128
-#define EEPROM_INTERVAL_ADDR 146
-
-#define MAX_SSID_LEN    32
-#define MAX_PASS_LEN    64
-#define MAX_UID_LEN     32
+#define MAX_SSID_LEN    100
+#define MAX_PASS_LEN    100
+#define MAX_UID_LEN     37
 #define MAX_MAC_LEN     18
+
+#define EEPROM_SSID_ADDR       0
+#define EEPROM_PASS_ADDR      (EEPROM_SSID_ADDR + MAX_SSID_LEN)
+#define EEPROM_UID_ADDR       (EEPROM_PASS_ADDR + MAX_PASS_LEN)
+#define EEPROM_MAC_ADDR       (EEPROM_UID_ADDR + MAX_UID_LEN)
+#define EEPROM_INTERVAL_ADDR  (EEPROM_MAC_ADDR + MAX_MAC_LEN)
+#define EEPROM_SIZE           (EEPROM_INTERVAL_ADDR + 4)
+
 
 /* defaults */
 #define HARD_SSID     "YourSSID"
 #define HARD_PASS     "YourPassword"
 #define HARD_UID      "YourUID"
-#define HARD_INTERVAL 86400          // 24 h seconds
+#define HARD_INTERVAL 300          // 5mins in seconds
 
 /* server */
-#define SERVER_URL    "http://192.168.8.151:3000"
+#define SERVER_URL    "http://192.168.8.151:5000"
 
 /* ------------------- global state ------------------- */
 String storedMAC;                    // filled in setup
-int    INTERVAL = 10;                 // will be updated from server
+int    INTERVAL = HARD_INTERVAL;                 // will be updated from server
 
 // Blinker blinker(14);
-Button  btn1(5, 5000);               // long‑press reset
-Button  btn2(0, 100);
+Button  btn1(5, 100);               // long‑press reset
+Button  btn2(0, 50);
 
 StaticJsonDocument<256> jdoc;        // reused buffer
 
@@ -73,8 +74,8 @@ void setup()
   pinMode(13, OUTPUT);   // blue   LED
   pinMode(14, OUTPUT);   // red   LED
   
-  digitalWrite(12, HIGH);                     // blue off = fail
-  digitalWrite(13, HIGH);                     // blue off = fail
+  digitalWrite(12, LOW);                    
+  digitalWrite(13, HIGH);                     
   digitalWrite(14, HIGH);
 
   // blinker.setupBlinker();
@@ -84,6 +85,8 @@ void setup()
   wifiSetupOTA();
   initSerialWebLogger();
   // #############################################################################################
+  btn1.begin();
+  btn2.begin();
 
   EEPROM.begin(EEPROM_SIZE);
 
@@ -101,14 +104,12 @@ void setup()
     storedMAC += c;
   }
 
-  btn1.begin();
-  btn2.begin();
 
   /* quick server self‑test */
-  String res = HTTPGET(F("/test"));
+  String res = HTTPGET(F("/"));
   deserializeJson(jdoc, res);
-  if (jdoc["message"] != "connection successful") {
-    digitalWrite(13, LOW);                     // blue off = fail
+  if (jdoc["message"] != "Health Monitoring Backend API is running") {
+    digitalWrite(13, LOW);                     
   } else if (jdoc.containsKey("interval")) {
     int eepInterval;
     EEPROM.get(EEPROM_INTERVAL_ADDR, eepInterval);
@@ -122,73 +123,79 @@ void setup()
 }
 
 /* ------------------- loop ------------------- */
-long lastSend = millis();
 bool programMode = false;
 void loop()
 {
+  btn1.update();
+  btn2.update();
   // ######################### Do not change this Code ###########################################
   otaHandle();
   updateSerialWebLogger();
   // #############################################################################################
 
-  btn1.update();
-  btn2.update();
 
-  if (btn1.isLongPressed()) factoryReset();
-
-  /* timed POST */
-  if (millis() - lastSend > (long)INTERVAL * 1000) {
-
-    /* POST body → {"Temp":32.05} */
-    String body;
-    body.reserve(32);
-    body = F("{\"Temp\":");
-    body += String(readTempSensor(), 2);
-    body += '}';
-
-    /* endpoint /api/set/temp/<MAC> */
-    String endpoint = F("/api/set/temp/");
-    endpoint += storedMAC;
-
-    /* retry up to 3 */
-    bool success = false;
-    for (uint8_t t = 0; t < 3 && !success; ++t) {
-      String reply = HTTPPOST(endpoint, body);
-      if (!deserializeJson(jdoc, reply) && jdoc["status"] == "ok") success = true;
-    }
-
-    if (!success) {
-      digitalWrite(12, LOW);                   // green off = error
-    } else {
-      digitalWrite(12, HIGH);
-
-      /* update interval if sent */
-      if (jdoc.containsKey("interval")) {
-        INTERVAL = jdoc["interval"].as<int>();
-        EEPROM.put(EEPROM_INTERVAL_ADDR, INTERVAL);
-        EEPROM.commit();
-      }
-
-      /* update Wi‑Fi creds if sent */
-      if (jdoc.containsKey("SSID")) {
-        String newSSID   = jdoc["SSID"    ];
-        String newPass   = jdoc["Password"];
-        for (int i = 0; i < MAX_SSID_LEN; ++i) eepromWriteIfDiff(EEPROM_SSID_ADDR + i, newSSID[i]);
-        for (int i = 0; i < MAX_PASS_LEN; ++i) eepromWriteIfDiff(EEPROM_PASS_ADDR + i, newPass[i]);
-        EEPROM.commit();
-        ESP.restart();
-      }
-    }
-
-    logMessage(readTempSensor());
-    lastSend = millis();
-  }
-  // blinker.blink(1000);
+  
+  // Serial.println("Button state");
+  // delay(200);
+  Serial.println(btn2.isLongPressed());
   if(btn2.isLongPressed() && !programMode){
     digitalWrite(14, LOW);
+    digitalWrite(12, HIGH);
     programMode = !programMode;
   }
   if(!programMode){
+    /* timed POST */
+
+    StaticJsonDocument<96> doc;
+    doc["temperature"] = readTempSensor();
+    doc["macAddress"] = storedMAC;
+
+    String body;
+    serializeJson(doc, body);
+
+    String endpoint = F("/esp32/add-temperature");
+
+    /* retry up to 3 */
+    bool success = false;
+    Serial.print("Sending Post request");
+    while (!success) {
+      Serial.print(".");
+      String reply = HTTPPOST(endpoint, body);
+      if (!deserializeJson(jdoc, reply) && jdoc["message"] == "Temperature recorded"){
+        float t = jdoc["tempRecord"]["out_temperature"].as<float>();
+        Serial.println(t);
+        success = true;
+      }else{
+        digitalWrite(14, LOW);                   // green off = error
+      }
+    }
+    Serial.println("#");
+    digitalWrite(14, HIGH);                   // green off = error
+
+    if (jdoc.containsKey("interval")) {
+      INTERVAL = jdoc["interval"].as<int>();
+      EEPROM.put(EEPROM_INTERVAL_ADDR, INTERVAL);
+      EEPROM.commit();
+    }
+    Serial.println(jdoc.containsKey("reset"));
+    Serial.println(jdoc["reset"].as<bool>());
+    if (jdoc.containsKey("reset") && jdoc["reset"].as<bool>()) {
+      factoryReset();
+    }
+
+    /* update Wi‑Fi creds if sent */
+    if (jdoc.containsKey("SSID")) {
+      String newSSID   = jdoc["SSID"    ];
+      String newPass   = jdoc["Password"];
+      for (int i = 0; i < MAX_SSID_LEN; ++i) eepromWriteIfDiff(EEPROM_SSID_ADDR + i, newSSID[i]);
+      for (int i = 0; i < MAX_PASS_LEN; ++i) eepromWriteIfDiff(EEPROM_PASS_ADDR + i, newPass[i]);
+      EEPROM.commit();
+      ESP.restart();
+    }
+
+    digitalWrite(12, HIGH);
+    // blinker.blink(1000);
+    Serial.println("sleep");
     ESP.deepSleep(INTERVAL*1000000);
   }
 }
