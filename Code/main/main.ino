@@ -10,7 +10,7 @@
 
 Button btn1(5, 2000);
 Button btn2(0, 2000);
-// Button btn3(10, 2000);
+// Button btn3(16, 2000);
 
 int redPin = 14; 
 int greenPin = 12;
@@ -47,6 +47,9 @@ bool RED = 1;
 bool GREEN = 1;
 bool BLUE = 1;
 
+unsigned long t = millis();
+int interval = 5*60;
+unsigned long lastRead = t;
 void loop(){
   // ######################### Do not change this Code ###########################################
   otaHandle();
@@ -59,22 +62,39 @@ void loop(){
   // btn3.update();
 
 
-  if (btn1.wasShortPress()) {
-    RED = !RED;
-    digitalWrite(redPin, RED);
-    digitalWrite(greenPin, GREEN);
-    digitalWrite(bluePin, BLUE);
-    logMessage("btn1");
-  }
-  if (btn2.wasShortPress()) {
-    GREEN = !GREEN;
-    digitalWrite(redPin, RED);
-    digitalWrite(greenPin, GREEN);
-    digitalWrite(bluePin, BLUE);
-    logMessage("btn2");
+  // if (btn1.wasShortPress()) {
+  //   RED = !RED;
+  //   digitalWrite(redPin, RED);
+  //   digitalWrite(greenPin, GREEN);
+  //   digitalWrite(bluePin, BLUE);
+  //   logMessage("btn1");
+  // }
+  // if (btn2.wasShortPress()) {
+  //   GREEN = !GREEN;
+  //   digitalWrite(redPin, RED);
+  //   digitalWrite(greenPin, GREEN);
+  //   digitalWrite(bluePin, BLUE);
+  //   logMessage("btn2");
+  // }
+  // if (btn3.wasShortPress()) {
+  //   BLUE = !BLUE;
+  //   digitalWrite(redPin, RED);
+  //   digitalWrite(greenPin, GREEN);
+  //   digitalWrite(bluePin, BLUE);
+  //   logMessage("btn3");
+  // }
+
+  if(millis()-t>interval*1000){
+    digitalWrite(redPin, LOW);
+    lastRead = millis();
+    logMessage(readTempSensor());
+    t = millis();
   }
 
-  logMessage(readTempSensor());
+  if(millis()-lastRead>500){
+    digitalWrite(redPin, HIGH);
 
-  blink(200);
+  }
+
+  // blink(200);
 }
