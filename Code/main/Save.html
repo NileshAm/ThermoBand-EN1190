@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <title>Save</title>
+  </head>
+  <body>
+    <h1>Credentials Saved</h1>
+    <p>Rebooting...</p>
+    <p>Redirecting in <span id="Time"></span> ......</p>
+  </body>
+  <script>
+    time = 5;
+    document.getElementById("Time").innerHTML = time;
+    var interval = setInterval(function () {
+      time--;
+      document.getElementById("Time").innerHTML = time;
+      if (time <= 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000); // Update every second
+  </script>
+</html>
