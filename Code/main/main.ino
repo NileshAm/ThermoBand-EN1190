@@ -32,7 +32,7 @@
 #define HARD_INTERVAL 300          // 5mins in seconds
 
 /* server */
-#define SERVER_URL    "http://192.168.8.151:5000"
+#define SERVER_URL    "https://thermoband-production.up.railway.app"
 
 /* ------------------- global state ------------------- */
 String storedMAC;                    // filled in setup
@@ -64,6 +64,16 @@ static void factoryReset()
   for (int i = 0; i < MAX_PASS_LEN;  ++i) eepromWriteIfDiff(EEPROM_PASS_ADDR + i, HARD_PASS[i]);
   EEPROM.commit();
   ESP.restart();
+}
+
+float poly_func(float x) {
+    // Coefficients for order 4 polynomial
+    float c[] = {0.0650327753, -8.18815089, 386.297803, -8093.20272, 63567.6014};
+    float value = 0;
+    for (int i = 0; i < 5; i++) {
+        value += c[i] * pow(x, 4 - i);
+    }
+    return value;
 }
 
 /* ------------------- setup ------------------- */
@@ -147,7 +157,7 @@ void loop()
     /* timed POST */
 
     StaticJsonDocument<96> doc;
-    doc["temperature"] = readTempSensor();
+    doc["temperature"] = poly_func(readTempSensor());
     doc["macAddress"] = storedMAC;
 
     String body;

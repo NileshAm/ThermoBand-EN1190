@@ -166,7 +166,7 @@ static bool wifiConnect(uint8_t retries, uint16_t msStep)
 
 static int pushUIDtoServer()
 {
-  setupHTTP(F("http://192.168.8.151:5000"));
+  setupHTTP(F("https://thermoband-production.up.railway.app"));
   StaticJsonDocument<96> doc;
   doc["uid"]        = uidBuf;
   doc["macAddress"] = WiFi.macAddress();
