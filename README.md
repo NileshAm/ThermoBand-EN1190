@@ -1,14 +1,20 @@
 # ThermoBand-EN1190
-This is for EN1190 Design Project module. This repository contains all the design files, code and other resourse we needed to devolop the ThrmoBand Product.
+This repository contains all the firmware, design files and other necessary resources for the EN1190 Electronic Design Project module.
 ## Documantation
-Docimentation folder contaoin all the document in this project.
+Documentation folder contain all the document in this project.
 1. Proposal
 2. Badget calculations
-3. Survey Data.
+3. [Survey Data](/Documentation/Survey%20responses.url).
 
 <hr/>
 
-<span style="font-size:1.5em;">**More details about code is in [README.md](Code/README.md) file in the Code folder**</span>
+## Design
+The 3D design is complete done in Solidworks. And the model is use to verify the placement and fit of the whole product before moving to manufacturing.
+Design files can be found [here](/Design).
+
 <hr/>
 
-<span style="font-size:1.5em;">**More details about design is in [README.md](Design\README.md) file in the design folder**</span>
+<span style="font-size:1em;">**More details about code is in [README.md](Code/README.md) file in the Code folder**</span>
+<hr/>
+
+<span style="font-size:1em;">**More details about design is in [README.md](Design\README.md) file in the design folder**</span>

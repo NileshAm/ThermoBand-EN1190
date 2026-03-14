@@ -68,7 +68,7 @@ static void factoryReset()
 
 float poly_func(float x) {
     // Coefficients for order 4 polynomial
-    float c[] = {-0.0013469376, 0.2189753045, -13.2929114574, 357.3340705466, -3554.4054571583};
+    float c[] = {0.0650327753, -8.1881508854, 386.2978027975, -8093.2027164114, 63567.6013506790};
     float value = 0;
     for (int i = 0; i < 5; i++) {
         value += c[i] * pow(x, 4 - i);
